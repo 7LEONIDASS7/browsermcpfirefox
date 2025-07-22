@@ -11,9 +11,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@repo/*": ["./lib/*"],
+      "@r2r/*": ["./lib/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "lib/**/*.js"],
   "exclude": ["node_modules"]
 }

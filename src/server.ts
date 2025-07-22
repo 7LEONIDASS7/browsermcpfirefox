@@ -16,10 +16,12 @@ type Options = {
   version: string;
   tools: Tool[];
   resources: Resource[];
+  wsPort?: number;
+  forceKill?: boolean;
 };
 
 export async function createServerWithTools(options: Options): Promise<Server> {
-  const { name, version, tools, resources } = options;
+  const { name, version, tools, resources, wsPort, forceKill } = options;
   const context = new Context();
   const server = new Server(
     { name, version },
@@ -31,7 +33,7 @@ export async function createServerWithTools(options: Options): Promise<Server> {
     },
   );
 
-  const wss = await createWebSocketServer();
+  const wss = await createWebSocketServer(wsPort, forceKill);
   wss.on("connection", (websocket) => {
     // Close any existing connections
     if (context.hasWs()) {
@@ -82,8 +84,9 @@ export async function createServerWithTools(options: Options): Promise<Server> {
     return { contents };
   });
 
+  const originalClose = server.close.bind(server);
   server.close = async () => {
-    await server.close();
+    await originalClose();
     await wss.close();
     await context.close();
   };

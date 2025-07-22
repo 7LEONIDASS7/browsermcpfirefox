@@ -41,12 +41,14 @@ const snapshotTools: Tool[] = [
 
 const resources: Resource[] = [];
 
-async function createServer(): Promise<Server> {
+async function createServer(options: { wsPort?: number; force?: boolean }): Promise<Server> {
   return createServerWithTools({
     name: appConfig.name,
     version: packageJSON.version,
     tools: snapshotTools,
     resources,
+    wsPort: options.wsPort,
+    forceKill: options.force,
   });
 }
 
@@ -56,8 +58,11 @@ async function createServer(): Promise<Server> {
 program
   .version("Version " + packageJSON.version)
   .name(packageJSON.name)
-  .action(async () => {
-    const server = await createServer();
+  .option("--ws-port <port>", "WebSocket port to use", "9001")
+  .option("--force", "Force kill existing processes on the specified port")
+  .action(async (options) => {
+    const wsPort = parseInt(options.wsPort);
+    const server = await createServer({ wsPort, force: options.force });
     setupExitWatchdog(server);
 
     const transport = new StdioServerTransport();
