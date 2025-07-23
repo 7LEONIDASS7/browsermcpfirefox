@@ -140,7 +140,31 @@ async function handleMessage(message) {
 // Navigation functions
 async function handleNavigate(tab, payload) {
   await browser.tabs.update(tab.id, { url: payload.url });
+  
+  // Wait for navigation to complete before returning success
+  await waitForTabLoaded(tab.id);
+  
   return { success: true, url: payload.url };
+}
+
+// Wait for tab to finish loading
+function waitForTabLoaded(tabId, timeout = 10000) {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      browser.webNavigation.onCompleted.removeListener(listener);
+      resolve(); // Don't reject, just resolve after timeout
+    }, timeout);
+    
+    const listener = (details) => {
+      if (details.tabId === tabId && details.frameId === 0) {
+        clearTimeout(timeoutId);
+        browser.webNavigation.onCompleted.removeListener(listener);
+        resolve();
+      }
+    };
+    
+    browser.webNavigation.onCompleted.addListener(listener);
+  });
 }
 
 async function handleGoBack(tab) {
@@ -153,9 +177,34 @@ async function handleGoForward(tab) {
   return { success: true };
 }
 
-// Content script communication
+// Content script communication with retry on missing receiver
 async function handleContentScript(tab, type, payload) {
-  return await browser.tabs.sendMessage(tab.id, { type, payload });
+  try {
+    return await browser.tabs.sendMessage(tab.id, { type, payload });
+  } catch (error) {
+    console.log('First sendMessage failed:', error.message);
+    
+    // If content script not ready, inject it and retry
+    if (error.message.includes('Receiving end does not exist')) {
+      console.log('Injecting content script and retrying...');
+      
+      try {
+        // Inject content script
+        await browser.tabs.executeScript(tab.id, { file: 'content.js' });
+        
+        // Wait a moment for script to initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Retry the message
+        return await browser.tabs.sendMessage(tab.id, { type, payload });
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+        throw new Error(`Content script injection failed: ${retryError.message}`);
+      }
+    } else {
+      throw error;
+    }
+  }
 }
 
 // Wait function
