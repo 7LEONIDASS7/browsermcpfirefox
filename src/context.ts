@@ -30,12 +30,21 @@ export class Context {
     payload: MessagePayload<SocketMessageMap, T>,
     options: { timeoutMs?: number } = { timeoutMs: 30000 },
   ) {
-    const { sendSocketMessage } = createSocketMessageSender<SocketMessageMap>(
-      this.ws,
-    );
+    console.log('Context.sendSocketMessage called:', { type, payload, hasWs: !!this._ws });
+    
+    const sender = createSocketMessageSender<SocketMessageMap>(this.ws);
+    console.log('Created sender:', { hasSendSocketMessage: typeof sender.sendSocketMessage });
+    
+    const { sendSocketMessage } = sender;
+    console.log('Extracted sendSocketMessage:', { type: typeof sendSocketMessage });
+    
     try {
-      return await sendSocketMessage(type, payload, options);
+      console.log('Calling sendSocketMessage...');
+      const result = await sendSocketMessage(type, payload, options);
+      console.log('sendSocketMessage success:', result);
+      return result;
     } catch (e) {
+      console.error('sendSocketMessage error:', e);
       if (e instanceof Error && e.message === mcpConfig.errors.noConnectedTab) {
         throw new Error(noConnectionMessage);
       }

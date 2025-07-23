@@ -65,6 +65,9 @@ program
     const server = await createServer({ wsPort, force: options.force });
     setupExitWatchdog(server);
 
+    // Redirect console.log to stderr to avoid polluting MCP stdout protocol
+    console.log = console.error;
+
     const transport = new StdioServerTransport();
     await server.connect(transport);
   });
